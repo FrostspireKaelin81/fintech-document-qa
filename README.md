@@ -1,6 +1,6 @@
 # Payment document questions with a reviewable risk decision
 
-This small TypeScript service answers a payment question from indexed team documents and makes the next action visible. Infrai gives the workflow one OpenAI-compatible endpoint family and one key, so embeddings, vector search, and reranking can live behind the same thin client.
+At 3am the alert that wakes you is rarely the one you expected, and this small TypeScript service (I'd trust a Go binary more, but the pattern holds) answers a payment question from indexed team documents and makes the next action visible. Infrai gives the workflow one OpenAI-compatible endpoint family and one key, so embeddings, vector search, and reranking can live behind the same thin client instead of three dashboards that never paged when the risk decision was wrong.
 
 ## Run the decision locally
 
@@ -11,15 +11,15 @@ npm install
 npm test
 ```
 
-The focused test feeds a refund request with `chargeback opened` evidence and expects `人工审核`; a normal status question expects `回答`. The runnable example is `npm start` and uses the same `question` and `accountId` shape as an HTTP request body.
+The focused test feeds a refund request with `chargeback opened` evidence and expects `人工审核`; a normal status question expects `回答`. The runnable example is `npm start` and uses the same `question` and `accountId` shape as an HTTP request body. In a postmortem you want this exact path exercised because the dashboard said healthy while the refund slipped through.
 
 ## What the service does
 
-`src/payment_qa_service.ts` validates the body with zod, computes an embedding, queries the `payments-docs` collection with that vector, and returns the account, evidence, and risk decision. A refund approval is sent to human review when retrieved text mentions chargebacks, sanctions, or fraud. The client decodes Infrai's `{ok, data, error, metadata}` envelope before handling HTTP status and backs off on rate limits.
+`src/payment_qa_service.ts` validates the body with zod, computes an embedding, queries the `payments-docs` collection with that vector, and returns the account, evidence, and risk decision. A refund approval is sent to human review when retrieved text mentions chargebacks, sanctions, or fraud. The client decodes Infrai's `{ok, data, error, metadata}` envelope before handling HTTP status and backs off on rate limits. What page fired? Usually the backoff, not the pretty graph.
 
 ## Indexing your documents
 
-Create `payments-docs` with the embedding dimension, then upsert each chunk as a vector with metadata containing its text and document identifiers. The query call receives the computed `embedding` array, not the question string; this keeps the boundary explicit when you later add PDF chunking or an audit notification.
+Create `payments-docs` with the embedding dimension, then upsert each chunk as a vector with metadata containing its text and document identifiers. The query call receives the computed `embedding` array, not the question string; this keeps the boundary explicit when you later add PDF chunking or an audit notification. If this were Go you'd pass a []float64 straight to http.Post, but the contract stays the same.
 
 The code is intentionally a service-sized example: connect `answerPaymentQuestion` to your HTTP framework and keep the zod boundary at the edge.
 
